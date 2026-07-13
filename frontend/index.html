@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Web Scraper Console</title>
+
+  <!-- Google Fonts: Space Grotesk (display) + Inter (body) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Background glow layers (pure CSS, no images) -->
+  <div class="bg-glow bg-glow--one"></div>
+  <div class="bg-glow bg-glow--two"></div>
+
+  <main class="page">
+
+    <!-- Header -->
+    <header class="header">
+      <span class="header__eyebrow">Smart Web Scraper</span>
+      <h1 class="header__title">Point it at a page. Pull out the signal.</h1>
+      <p class="header__subtitle">
+        Paste any URL below and the scraper will fetch it, extract the
+        content, and return it as a structured card.
+      </p>
+    </header>
+
+    <!-- Search / scrape form -->
+    <section class="scrape-box" aria-label="Scrape a URL">
+      <div class="scrape-box__scanline" aria-hidden="true"></div>
+      <form id="scrapeForm" class="scrape-form">
+        <input
+          type="url"
+          id="urlInput"
+          class="scrape-form__input"
+          placeholder="https://example.com/careers/job-123"
+          required
+        />
+        <button type="submit" id="scrapeBtn" class="scrape-form__button">
+          <span id="btnLabel">Scrape Jobs</span>
+          <span id="spinner" class="spinner hidden" aria-hidden="true"></span>
+        </button>
+      </form>
+
+      <!-- Feedback messages -->
+      <p id="errorMsg" class="feedback feedback--error hidden"></p>
+      <p id="successMsg" class="feedback feedback--success hidden"></p>
+    </section>
+
+    <!-- Results summary -->
+    <section id="summary" class="summary hidden">
+      <span class="summary__count" id="jobCount">0</span>
+      <span class="summary__label">Total Jobs Found</span>
+    </section>
+
+    <!-- Job cards grid -->
+    <section id="cardsGrid" class="cards-grid"></section>
+
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

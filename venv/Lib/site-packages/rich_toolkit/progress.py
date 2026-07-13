@@ -30,14 +30,16 @@ class Progress(Live, Element):
         transient_on_error: bool = False,
         inline_logs: bool = False,
         lines_to_show: int = -1,
+        preserve_logs: bool = False,
         quiet: bool = False,
         **metadata: Dict[Any, Any],
     ) -> None:
-        self.title = title
+        self._inline_logs = inline_logs
+        self._preserve_logs = preserve_logs
+        self._title = title
         self.current_message = title
         self.is_error = False
         self._transient_on_error = transient_on_error
-        self._inline_logs = inline_logs
         self.lines_to_show = lines_to_show
         self._quiet = quiet
 
@@ -48,6 +50,21 @@ class Progress(Live, Element):
 
         Element.__init__(self, style=style, metadata=metadata)
         super().__init__(console=console, refresh_per_second=8, transient=transient)
+
+    @property
+    def title(self) -> str:
+        return self._title
+
+    @title.setter
+    def title(self, title: str) -> None:
+        if (
+            self._preserve_logs
+            and self._inline_logs
+            and self.current_message == self._title
+        ):
+            self.current_message = title
+
+        self._title = title
 
     # TODO: remove this once rich uses "Self"
     def __enter__(self) -> "Progress":
@@ -104,6 +121,10 @@ class Progress(Live, Element):
         return result
 
     def log(self, text: str | Text, end: str = "\n") -> None:
+        if self._preserve_logs and not self._quiet:
+            self.console.print(text, end=end, soft_wrap=True)
+            return
+
         if end != "\n":
             text = self._append_text(text, end)
 

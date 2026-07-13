@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from typing import List
 
 from fastapi import BackgroundTasks, FastAPI, Depends, HTTPException, Query, status
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from app.config.settings import settings
@@ -43,6 +44,24 @@ app = FastAPI(
     version=settings.app_version,
     description="A REST API that scrapes public websites and returns structured data.",
     lifespan=lifespan,
+)
+
+# ---------------------------------------------------------------------------
+# CORS configuration
+# ---------------------------------------------------------------------------
+# Allows the local frontend (served via e.g. VS Code "Live Server" on port
+# 5500) to call this API from the browser. Restricted to known dev origins
+# rather than "*" so it stays safe to use as a starting point in production -
+# add your deployed frontend's origin here when you ship it.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://127.0.0.1:5500",
+        "http://localhost:5500",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
