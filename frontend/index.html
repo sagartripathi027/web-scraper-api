@@ -3,65 +3,97 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Web Scraper Console</title>
-
-  <!-- Google Fonts: Space Grotesk (display) + Inter (body) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-
+  <title>Smart Web Scraper</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <div class="app-container">
+    <aside class="sidebar">
+      <h2>Web Scraper API</h2>
+      <nav>
+        <button id="nav-scrape" class="nav-btn active">Scrape New URL</button>
+        <button id="nav-history" class="nav-btn">Scrape History</button>
+      </nav>
+    </aside>
 
-  <!-- Background glow layers (pure CSS, no images) -->
-  <div class="bg-glow bg-glow--one"></div>
-  <div class="bg-glow bg-glow--two"></div>
+    <main class="main-content">
+      <!-- SCRAPE VIEW -->
+      <section id="view-scrape" class="view active">
+        <header>
+          <h1>Scrape a Website</h1>
+          <p>Enter a URL below to extract its structured data.</p>
+        </header>
+        
+        <form id="scrapeForm" class="scrape-form">
+          <input type="url" id="urlInput" placeholder="https://example.com" required />
+          <button type="submit" id="scrapeBtn">
+            <span id="btnLabel">Scrape</span>
+            <span id="spinner" class="spinner hidden"></span>
+          </button>
+        </form>
+        
+        <div id="scrapeMessages">
+          <p id="errorMsg" class="feedback error hidden"></p>
+          <p id="successMsg" class="feedback success hidden"></p>
+        </div>
 
-  <main class="page">
+        <div id="scrapeResult" class="result-container hidden">
+          <!-- Populated via JS -->
+        </div>
+      </section>
 
-    <!-- Header -->
-    <header class="header">
-      <span class="header__eyebrow">Smart Web Scraper</span>
-      <h1 class="header__title">Point it at a page. Pull out the signal.</h1>
-      <p class="header__subtitle">
-        Paste any URL below and the scraper will fetch it, extract the
-        content, and return it as a structured card.
-      </p>
-    </header>
+      <!-- HISTORY VIEW -->
+      <section id="view-history" class="view hidden">
+        <header>
+          <h1>Scrape History</h1>
+          <p>View previously scraped pages and search by keywords.</p>
+        </header>
 
-    <!-- Search / scrape form -->
-    <section class="scrape-box" aria-label="Scrape a URL">
-      <div class="scrape-box__scanline" aria-hidden="true"></div>
-      <form id="scrapeForm" class="scrape-form">
-        <input
-          type="url"
-          id="urlInput"
-          class="scrape-form__input"
-          placeholder="https://example.com/careers/job-123"
-          required
-        />
-        <button type="submit" id="scrapeBtn" class="scrape-form__button">
-          <span id="btnLabel">Scrape Jobs</span>
-          <span id="spinner" class="spinner hidden" aria-hidden="true"></span>
-        </button>
-      </form>
+        <div class="search-bar">
+          <input type="text" id="searchInput" placeholder="Search by keyword (e.g. tech, jobs)..." />
+          <button id="searchBtn">Search</button>
+          <button id="clearSearchBtn">Clear</button>
+        </div>
 
-      <!-- Feedback messages -->
-      <p id="errorMsg" class="feedback feedback--error hidden"></p>
-      <p id="successMsg" class="feedback feedback--success hidden"></p>
-    </section>
+        <div class="table-container">
+          <table id="historyTable">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>URL</th>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="historyTbody">
+              <!-- Populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-    <!-- Results summary -->
-    <section id="summary" class="summary hidden">
-      <span class="summary__count" id="jobCount">0</span>
-      <span class="summary__label">Total Jobs Found</span>
-    </section>
+      <!-- DETAIL MODAL -->
+      <div id="detailModal" class="modal hidden">
+        <div class="modal-content">
+          <span class="close-btn" id="closeModalBtn">&times;</span>
+          <div id="modalBody">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
 
-    <!-- Job cards grid -->
-    <section id="cardsGrid" class="cards-grid"></section>
-
-  </main>
-
+  <!-- Configuration for API URL -->
+  <script>
+    // In production, this can be injected or read from an environment setup
+    window.ENV = {
+      API_URL: "http://localhost:8000" // Default for local development
+    };
+  </script>
   <script src="script.js"></script>
 </body>
 </html>

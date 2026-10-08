@@ -1,6 +1,12 @@
-const API_URL = "http://127.0.0.1:8000/scrape";
+const API_URL = window.ENV?.API_URL || "http://127.0.0.1:8000";
 
-// Grab all the DOM elements we need once, up front.
+// Nav Elements
+const navScrape = document.getElementById("nav-scrape");
+const navHistory = document.getElementById("nav-history");
+const viewScrape = document.getElementById("view-scrape");
+const viewHistory = document.getElementById("view-history");
+
+// Scrape Elements
 const form = document.getElementById("scrapeForm");
 const urlInput = document.getElementById("urlInput");
 const scrapeBtn = document.getElementById("scrapeBtn");
@@ -8,91 +14,196 @@ const btnLabel = document.getElementById("btnLabel");
 const spinner = document.getElementById("spinner");
 const errorMsg = document.getElementById("errorMsg");
 const successMsg = document.getElementById("successMsg");
-const summary = document.getElementById("summary");
-const jobCount = document.getElementById("jobCount");
-const cardsGrid = document.getElementById("cardsGrid");
+const scrapeResult = document.getElementById("scrapeResult");
 
-// Handle the form submit (the "Scrape Jobs" button).
-form.addEventListener("submit", async (event) => {
-  event.preventDefault(); // stop the page from reloading
+// History Elements
+const historyTbody = document.getElementById("historyTbody");
+const searchInput = document.getElementById("searchInput");
+const searchBtn = document.getElementById("searchBtn");
+const clearSearchBtn = document.getElementById("clearSearchBtn");
+
+// Modal Elements
+const detailModal = document.getElementById("detailModal");
+const closeModalBtn = document.getElementById("closeModalBtn");
+const modalBody = document.getElementById("modalBody");
+
+// --- Navigation ---
+navScrape.addEventListener("click", () => switchView('scrape'));
+navHistory.addEventListener("click", () => {
+  switchView('history');
+  loadHistory();
+});
+
+function switchView(view) {
+  if (view === 'scrape') {
+    viewScrape.classList.add("active");
+    viewScrape.classList.remove("hidden");
+    viewHistory.classList.remove("active");
+    viewHistory.classList.add("hidden");
+    navScrape.classList.add("active");
+    navHistory.classList.remove("active");
+  } else {
+    viewHistory.classList.add("active");
+    viewHistory.classList.remove("hidden");
+    viewScrape.classList.remove("active");
+    viewScrape.classList.add("hidden");
+    navHistory.classList.add("active");
+    navScrape.classList.remove("active");
+  }
+}
+
+// --- Scrape Flow ---
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
   const url = urlInput.value.trim();
   if (!url) return;
 
   resetMessages();
   setLoading(true);
+  scrapeResult.classList.add("hidden");
 
   try {
-    const response = await fetch(API_URL, {
+    const res = await fetch(`${API_URL}/scrape`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url }),
+      body: JSON.stringify({ url })
     });
-
     
-    if (!response.ok) {
-      const errorBody = await safeJson(response);
-      const detail = errorBody?.detail || `Request failed with status ${response.status}`;
-      throw new Error(detail);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Error: ${res.status}`);
     }
 
-    const result = await response.json();
-    renderResult(result, url);
+    const data = await res.json();
+    showSuccess(data.message);
+    renderPageDetails(data.data, scrapeResult);
+    scrapeResult.classList.remove("hidden");
   } catch (err) {
-    
-
-    showError(err.message || "Something went wrong while scraping this URL.");
-    summary.classList.add("hidden");
-    cardsGrid.innerHTML = "";
+    showError(err.message);
   } finally {
     setLoading(false);
   }
 });
 
-function renderResult(result, originalUrl) {
-  const page = result.data;
-  const domain = getDomain(originalUrl);
-
-  showSuccess(result.message || "Page scraped successfully.");
-
-  jobCount.textContent = "1";
-  summary.classList.remove("hidden");
-
-  const skills = Array.isArray(page.keywords) ? page.keywords : [];
-
-  const card = document.createElement("article");
-  card.className = "job-card";
-  card.innerHTML = `
-    <h3 class="job-card__title">${escapeHtml(page.title || "Untitled page")}</h3>
-    <p class="job-card__company">${escapeHtml(domain)}</p>
-
-    <div class="job-card__row"><span>Location</span><span class="job-card__placeholder">Not specified</span></div>
-    <div class="job-card__row"><span>Salary</span><span class="job-card__placeholder">Not specified</span></div>
-    <div class="job-card__row"><span>Experience</span><span class="job-card__placeholder">Not specified</span></div>
-    <div class="job-card__row"><span>Source</span><span>${escapeHtml(domain)}</span></div>
-
-    <div class="job-card__skills">
-      ${
-        skills.length
-          ? skills.map((kw) => `<span class="skill-chip">${escapeHtml(kw)}</span>`).join("")
-          : `<span class="job-card__placeholder">No keywords extracted</span>`
-      }
-    </div>
-
-    <a class="job-card__apply" href="${escapeHtml(originalUrl)}" target="_blank" rel="noopener noreferrer">
-      Apply / View Source
-    </a>
-  `;
-
-  cardsGrid.innerHTML = "";
-  cardsGrid.appendChild(card);
+// --- History Flow ---
+async function loadHistory(keyword = "") {
+  try {
+    const endpoint = keyword 
+      ? `${API_URL}/search?keyword=${encodeURIComponent(keyword)}` 
+      : `${API_URL}/pages`;
+    
+    const res = await fetch(endpoint);
+    if (!res.ok) throw new Error("Failed to load pages");
+    const pages = await res.json();
+    
+    historyTbody.innerHTML = pages.length ? "" : `<tr><td colspan="6">No pages found.</td></tr>`;
+    
+    pages.forEach(p => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${p.id}</td>
+        <td class="truncate" title="${escapeHtml(p.url)}"><a href="${escapeHtml(p.url)}" target="_blank">${escapeHtml(p.url)}</a></td>
+        <td class="truncate" title="${escapeHtml(p.title || 'N/A')}">${escapeHtml(p.title || 'N/A')}</td>
+        <td>${escapeHtml(p.status)}</td>
+        <td>${new Date(p.created_at).toLocaleDateString()}</td>
+        <td><button class="view-btn" onclick="viewPage(${p.id})">View</button></td>
+      `;
+      historyTbody.appendChild(tr);
+    });
+  } catch (err) {
+    historyTbody.innerHTML = `<tr><td colspan="6" style="color:red">Error: ${escapeHtml(err.message)}</td></tr>`;
+  }
 }
 
-// ---------- Small helper functions ----------
+searchBtn.addEventListener("click", () => loadHistory(searchInput.value.trim()));
+clearSearchBtn.addEventListener("click", () => {
+  searchInput.value = "";
+  loadHistory();
+});
+searchInput.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") loadHistory(searchInput.value.trim());
+});
+
+// --- Modal & Detailed View ---
+window.viewPage = async function(id) {
+  try {
+    const res = await fetch(`${API_URL}/pages/${id}`);
+    if (!res.ok) throw new Error("Failed to fetch page details");
+    const page = await res.json();
+    renderPageDetails(page, modalBody);
+    detailModal.classList.remove("hidden");
+  } catch(err) {
+    alert("Error: " + err.message);
+  }
+};
+
+closeModalBtn.addEventListener("click", () => detailModal.classList.add("hidden"));
+window.addEventListener("click", (e) => {
+  if (e.target === detailModal) detailModal.classList.add("hidden");
+});
+
+// --- Helpers ---
+function renderPageDetails(page, container) {
+  const c = page.content || { headings: {h1:[],h2:[],h3:[]}, paragraphs: [], links: [], images: [] };
+  const h1 = c.headings?.h1 || [];
+  const h2 = c.headings?.h2 || [];
+  const h3 = c.headings?.h3 || [];
+  const pList = c.paragraphs || [];
+  const links = c.links || [];
+  const images = c.images || [];
+  const kw = page.keywords || [];
+
+  container.innerHTML = `
+    <h2>${escapeHtml(page.title || "Untitled")}</h2>
+    <p><strong>URL:</strong> <a href="${escapeHtml(page.url)}" target="_blank">${escapeHtml(page.url)}</a></p>
+    <p><strong>Status:</strong> ${escapeHtml(page.status)} | <strong>Date:</strong> ${new Date(page.created_at).toLocaleString()}</p>
+    
+    <div class="data-section">
+      <h3>Meta Description</h3>
+      <p>${escapeHtml(page.description || "No description found.")}</p>
+    </div>
+
+    <div class="data-section">
+      <h3>Keywords Extract</h3>
+      <div class="keywords">
+        ${kw.length ? kw.map(k => `<span class="keyword-chip">${escapeHtml(k)}</span>`).join("") : "None"}
+      </div>
+    </div>
+
+    <div class="data-section">
+      <h3>Headings (H1, H2, H3 count: ${h1.length + h2.length + h3.length})</h3>
+      <div style="max-height:100px; overflow-y:auto; border:1px solid #e5e7eb; padding: 0.5rem;">
+        ${[...h1, ...h2, ...h3].map(h => `<p>• ${escapeHtml(h)}</p>`).join("") || "No headings"}
+      </div>
+    </div>
+
+    <div class="data-section">
+      <h3>Paragraphs (Count: ${pList.length})</h3>
+      <div style="max-height:150px; overflow-y:auto; border:1px solid #e5e7eb; padding: 0.5rem;">
+        ${pList.map(p => `<p style="margin-bottom:0.5rem;">${escapeHtml(p)}</p>`).join("") || "No paragraphs"}
+      </div>
+    </div>
+
+    <div class="data-section">
+      <h3>Links (Count: ${links.length})</h3>
+      <div style="max-height:100px; overflow-y:auto; border:1px solid #e5e7eb; padding: 0.5rem;">
+        ${links.map(l => `<p><a href="${escapeHtml(l)}" target="_blank">${escapeHtml(l)}</a></p>`).join("") || "No links"}
+      </div>
+    </div>
+
+    <div class="data-section">
+      <h3>Images (Count: ${images.length})</h3>
+      <div style="max-height:100px; overflow-y:auto; border:1px solid #e5e7eb; padding: 0.5rem;">
+        ${images.map(img => `<p>${escapeHtml(img)}</p>`).join("") || "No images"}
+      </div>
+    </div>
+  `;
+}
 
 function setLoading(isLoading) {
   scrapeBtn.disabled = isLoading;
   spinner.classList.toggle("hidden", !isLoading);
-  btnLabel.textContent = isLoading ? "Scraping..." : "Scrape Jobs";
+  btnLabel.textContent = isLoading ? "Scraping..." : "Scrape";
 }
 
 function resetMessages() {
@@ -102,38 +213,16 @@ function resetMessages() {
   successMsg.textContent = "";
 }
 
-function showError(message) {
-  errorMsg.textContent = message;
+function showError(msg) {
+  errorMsg.textContent = msg;
   errorMsg.classList.remove("hidden");
-  successMsg.classList.add("hidden");
 }
 
-function showSuccess(message) {
-  successMsg.textContent = message;
+function showSuccess(msg) {
+  successMsg.textContent = msg;
   successMsg.classList.remove("hidden");
-  errorMsg.classList.add("hidden");
 }
 
-// Extracts just the hostname (e.g. "example.com") from a full URL,
-// used to display a "Company"/"Source" value.
-function getDomain(url) {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-}
-
-// Safely parse JSON without throwing if the body is empty/invalid.
-async function safeJson(response) {
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
-}
-
-// Basic escaping so scraped text can never break the page's HTML.
 function escapeHtml(str) {
   const div = document.createElement("div");
   div.textContent = String(str);
